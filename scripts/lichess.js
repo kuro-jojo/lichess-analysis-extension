@@ -2,10 +2,12 @@ const lichessReportBar = document.querySelector("#main-wrap > main > div.analyse
 const pgn = document.getElementsByClassName("pgn")[0].innerText;
 
 const GAME_REPORT_URL = "https://chess.wintrcat.uk/";
+
 const addBtn = (() => {
     const btnExists = document.getElementById("lichess-extension");
 
     if (btnExists) return;
+    
     const btn = document.createElement("button");
     btn.id = "lichess-extension";
     btn.innerText = "To game report";
