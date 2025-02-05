@@ -5,13 +5,13 @@ style.innerHTML = `
     visibility: hidden;
     max-width: 50%;
     margin: 0 auto;
-    background-color: #ffffff;
+    background-color: #dddddd;
     color: #4caf50;
     text-align: center;
     border-radius: 2px;
     padding: 16px;
     position: fixed;
-    z-index: 1;
+    z-index: 1000;
     left: 50%;
     bottom: 30px;
     font-size: 20px;
@@ -20,8 +20,8 @@ style.innerHTML = `
 
 .toast.show {
     visibility: visible;
-    -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
-    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    -webkit-animation: fadein 0.5s, fadeout 0.5s 1.5s;
+    animation: fadein 0.5s, fadeout 0.5s 1.5s;
 }
 
 @-webkit-keyframes fadein {
@@ -53,8 +53,11 @@ const showToast = (message) => {
     toast.innerText = message;
     document.body.appendChild(toast);
     toast.classList.add('show');
-    setTimeout(() => {
-        toast.classList.remove('show');
-        document.body.removeChild(toast);
-    }, 5000);
+
+    toast.addEventListener('animationend', (event) => {
+        if (event.animationName === 'fadeout') {
+            toast.classList.remove('show');
+            document.body.removeChild(toast);
+        }
+    });
 }

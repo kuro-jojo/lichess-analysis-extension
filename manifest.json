@@ -12,11 +12,13 @@
     "content_scripts": [
         {
             "js": [
+                "scripts/toast.js",
                 "scripts/lichess.js"
             ],
             "matches": [
                 "https://lichess.org/*/white",
-                "https://lichess.org/*/black"
+                "https://lichess.org/*/black",
+                "https://lichess.org/analysis/*"
             ]
         },
         {

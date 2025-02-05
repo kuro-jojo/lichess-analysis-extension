@@ -1,25 +1,44 @@
+showToast("Lichess extension loaded");
+
 const lichessReportBar = document.querySelector("#main-wrap > main > div.analyse__tools > div.ceval");
 const pgn = document.getElementsByClassName("pgn")[0].innerText;
 
 const GAME_REPORT_URL = "https://chess.wintrcat.uk/";
-
 const addBtn = (() => {
-    const btnExists = document.getElementById("lichess-extension");
+    let btn = document.getElementById("lichess-extension");
 
-    if (btnExists) return;
-    
-    const btn = document.createElement("button");
-    btn.id = "lichess-extension";
-    btn.innerText = "To game report";
-    btn.classList.add("button", "text", "ceval__button");
+
+    if (!btn) {
+        btn = document.createElement("button");
+        btn.id = "lichess-extension";
+        btn.innerText = "To game report";
+        btn.classList.add("button", "text", "ceval__button");
+    }
+
     btn.onclick = () => {
+        const textArea = document.querySelector("textarea.copyable");
+        if (textArea) {
+            const pgn = textArea.value;
+            if (!pgn) {
+                showToast("No PGN found");
+                return;
+            }
+            sendMessageToOpenTab(pgn);
+            return;
+        }
+
         const pgnClass = document.getElementsByClassName("pgn");
         if (pgnClass.length == 0) {
-            alert("No PGN element found");
+            showToast("No PGN element found");
             return;
         }
 
         const pgn = pgnClass[0].innerText;
+
+        if (!pgn) {
+            showToast("No PGN found");
+            return;
+        }
         sendMessageToOpenTab(pgn);
     };
     lichessReportBar.appendChild(btn);
