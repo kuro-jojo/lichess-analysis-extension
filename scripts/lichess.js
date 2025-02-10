@@ -7,7 +7,6 @@ const GAME_REPORT_URL = "https://chess.wintrcat.uk/";
 const addBtn = (() => {
     let btn = document.getElementById("lichess-extension");
 
-
     if (!btn) {
         btn = document.createElement("button");
         btn.id = "lichess-extension";

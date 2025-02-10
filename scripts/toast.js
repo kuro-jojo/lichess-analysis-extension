@@ -5,9 +5,9 @@ style.innerHTML = `
     visibility: hidden;
     max-width: 50%;
     margin: 0 auto;
-    background-color: #dddddd;
-    color: #4caf50;
-    text-align: center;
+    background-color:rgb(85, 85, 85);
+    color:rgb(195, 221, 195);
+    text-align: center; 
     border-radius: 2px;
     padding: 16px;
     position: fixed;

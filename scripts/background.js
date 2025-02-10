@@ -2,15 +2,29 @@ const gameReportTabId = "game-report-tab-id";
 const FAILED_CONNECTION_ERROR = "Could not establish connection. Receiving end does not exist.";
 const RETRY_LIMIT = 3;
 
+async function getCallerTab() {
+    let queryOptions = { active: true, lastFocusedWindow: true };
+    // `tab` will either be a `tabs.Tab` instance or `undefined`.
+    let [tab] = await chrome.tabs.query(queryOptions);
+    return tab;
+}
+
 chrome.runtime.onMessage.addListener(async (request, _, sendResponse) => {
     if (request.message === "open_new_tab") {
+        const callerTab = await getCallerTab();
+
+        let newTabIndex;
+        if (callerTab) {
+            newTabIndex = callerTab.index + 1;
+        }
+
         try {
             const result = await chrome.storage.local.get(['gameReportTabId']);
             let tabId = result.gameReportTabId;
 
             if (!tabId) {
                 console.log("No tab id found");
-                await createGameReportTab(request.url, request.pgn);
+                await createGameReportTab(request.url, request.pgn, newTabIndex);
             } else {
                 try {
                     const tab = await chrome.tabs.get(tabId);
@@ -18,7 +32,7 @@ chrome.runtime.onMessage.addListener(async (request, _, sendResponse) => {
                     await setTabActive(tabId);
                 } catch (error) {
                     console.log("Error", error);
-                    await createGameReportTab(request.url, request.pgn);
+                    await createGameReportTab(request.url, request.pgn, newTabIndex);
                 }
             }
         } catch (error) {
@@ -27,9 +41,14 @@ chrome.runtime.onMessage.addListener(async (request, _, sendResponse) => {
         sendResponse({ message: "Message received" });
     }
 });
-const createGameReportTab = async (url, pgn) => {
+
+const createGameReportTab = async (url, pgn, index) => {
     try {
-        const tab = await chrome.tabs.create({ url: url });
+        let properties = { url: url };
+        if (index) {
+            properties.index = index;
+        }
+        const tab = await chrome.tabs.create(properties);
         await chrome.storage.local.set({ gameReportTabId: tab.id });
 
         sendPGNToGameReport(tab.id, pgn);
