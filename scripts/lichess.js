@@ -1,17 +1,29 @@
 showToast("Lichess extension loaded");
 
-const lichessReportBar = document.querySelector("#main-wrap > main > div.analyse__tools > div.ceval");
-const pgn = document.getElementsByClassName("pgn")[0].innerText;
+const lichessReportBar = document.querySelector("#main-wrap > main > div.analyse__tools");
+const GAME_REPORT_URL = "https://wintrchess.com/";
+const BUTTON_NAME = "wintrchess-button";
 
-const GAME_REPORT_URL = "https://chess.wintrcat.uk/";
+const checkUserColor = (pgn) => {
+    const userName = document.getElementById("user_tag")?.innerHTML;
+    const lines = pgn.split('\n');
+    for (let line of lines) {
+        if (line.includes(userName)) {
+            return line.startsWith('[White') ? 'White' : 'Black';
+        }
+    }
+    return 'White'; // If user not found in PGN
+}
+
+
+
 const addBtn = (() => {
-    let btn = document.getElementById("lichess-extension");
-
+    let btn = document.getElementById(BUTTON_NAME);
     if (!btn) {
         btn = document.createElement("button");
-        btn.id = "lichess-extension";
-        btn.innerText = "To game report";
-        btn.classList.add("button", "text", "ceval__button");
+        btn.id = BUTTON_NAME;
+        btn.innerText = "Analyze on wintrchess";
+        btn.classList.add(BUTTON_NAME);
     }
 
     btn.onclick = () => {
@@ -38,16 +50,18 @@ const addBtn = (() => {
             showToast("No PGN found");
             return;
         }
-        sendMessageToOpenTab(pgn);
+        const userColor = checkUserColor(pgn);
+        sendMessageToOpenTab(pgn, userColor);
     };
-    lichessReportBar.appendChild(btn);
+    lichessReportBar.insertBefore(btn, lichessReportBar.firstChild);
 })()
 
-const sendMessageToOpenTab = (pgn) => {
+const sendMessageToOpenTab = (pgn, userColor) => {
     chrome.runtime.sendMessage({
         message: "open_new_tab",
         url: GAME_REPORT_URL,
-        pgn: pgn
+        pgn: pgn,
+        userColor: userColor    
     })
 }
 

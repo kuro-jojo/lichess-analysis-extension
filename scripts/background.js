@@ -1,10 +1,9 @@
 const gameReportTabId = "game-report-tab-id";
 const FAILED_CONNECTION_ERROR = "Could not establish connection. Receiving end does not exist.";
-const RETRY_LIMIT = 3;
+const RETRY_LIMIT = 5;
 
 async function getCallerTab() {
     let queryOptions = { active: true, lastFocusedWindow: true };
-    // `tab` will either be a `tabs.Tab` instance or `undefined`.
     let [tab] = await chrome.tabs.query(queryOptions);
     return tab;
 }
@@ -23,26 +22,25 @@ chrome.runtime.onMessage.addListener(async (request, _, sendResponse) => {
             let tabId = result.gameReportTabId;
 
             if (!tabId) {
-                console.log("No tab id found");
-                await createGameReportTab(request.url, request.pgn, newTabIndex);
+                await createGameReportTab(request.url, request.pgn, request.userColor, newTabIndex);
             } else {
                 try {
-                    const tab = await chrome.tabs.get(tabId);
-                    await sendPGNToGameReport(tabId, request.pgn);
-                    await setTabActive(tabId);
+                    await deleteGameReportTab(tabId);
+                    await createGameReportTab(request.url, request.pgn, request.userColor, newTabIndex);
                 } catch (error) {
-                    console.log("Error", error);
-                    await createGameReportTab(request.url, request.pgn, newTabIndex);
+                    console.error("Error", error);
+                    await createGameReportTab(request.url, request.pgn, request.userColor, newTabIndex);
                 }
             }
         } catch (error) {
-            console.error("Error retrieving tab id:", error);
+            console.error("Error retrieving tab id : ", error);
         }
         sendResponse({ message: "Message received" });
     }
 });
 
-const createGameReportTab = async (url, pgn, index) => {
+const createGameReportTab = async (url, pgn, userColor, index) => {
+    console.log("Creating new tab");
     try {
         let properties = { url: url };
         if (index) {
@@ -51,33 +49,34 @@ const createGameReportTab = async (url, pgn, index) => {
         const tab = await chrome.tabs.create(properties);
         await chrome.storage.local.set({ gameReportTabId: tab.id });
 
-        sendPGNToGameReport(tab.id, pgn);
+        await sendPGNToGameReport(tab.id, pgn, userColor);
     } catch (error) {
-        console.error(`Error creating tab: ${error.message}`);
+        throw new Error("Failed to create game report tab");
     }
 }
 
-
-const setTabActive = async (tabId) => {
+const deleteGameReportTab = async (tabId) => {
     try {
-        await chrome.tabs.update(tabId, { active: true });
-    } catch (error) {
-        console.error(`Error setting tab active: ${error.message}`);
-    }
-}
-
-const sendPGNToGameReport = async (tabId, pgn, retries = 0) => {
-    try {
-        console.log("Sending PGN to game report");
-        const response = await chrome.tabs.sendMessage(tabId, { message: "update_pgn", pgn: pgn });
-        console.log("Message sent successfully:", response);
-    } catch (error) {
-        console.error("Error sending message to tab:", error);
-        if (error.message === FAILED_CONNECTION_ERROR && retries < RETRY_LIMIT) {
-            const delay = Math.pow(2, retries) * 500; // Exponential backoff
-            console.log(`Retrying in ${delay}ms, attempt ${retries + 1}`);
-            setTimeout(() => sendPGNToGameReport(tabId, pgn, retries + 1), delay);
-            return;
+        console.log("Deleting game report tab");
+        const tab = await chrome.tabs.get(tabId);
+        if (tab) {
+            await chrome.tabs.remove(tab.id);
         }
+    } catch (error) {
+        console.error("Error deleting game report tab : ", error);
+    }
+}
+
+const sendPGNToGameReport = async (tabId, pgn, userColor, retries = 0) => {
+    try {
+        await chrome.tabs.sendMessage(tabId, { message: "update_pgn", pgn: pgn, tabId: tabId, userColor: userColor });
+    } catch (error) {
+        if (error.message !== FAILED_CONNECTION_ERROR || retries >= RETRY_LIMIT) {
+            throw new Error("Failed to send PGN to game report");
+        }
+
+        const delay = Math.pow(2, retries) * 500; // Exponential backoff
+        console.log(`Retrying in ${delay}ms, attempt ${retries + 1}`);
+        setTimeout(() => sendPGNToGameReport(tabId, pgn, userColor, retries + 1), delay);
     }
 }

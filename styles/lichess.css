@@ -1,0 +1,18 @@
+.wintrchess-button {
+    background-color: rgb(70, 125, 232);
+    color: white;
+    border: none;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 10px;
+    text-transform: capitalize;
+    font-weight: 600;
+    font-size: 2rem;
+}
+
+.wintrchess-button:hover {
+    background-color: rgb(39, 166, 170);
+    color: rgb(49, 47, 47);
+    transition: all 0.2s ease;
+
+}
