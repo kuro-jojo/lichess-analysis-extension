@@ -39,7 +39,7 @@
         "default_popup": "popup.html"
     },
     "permissions": [
-        "storage"
+        "tabs"
     ],
     "background": {
         "service_worker": "scripts/background.js"

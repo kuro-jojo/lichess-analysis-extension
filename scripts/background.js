@@ -1,4 +1,3 @@
-const gameReportTabId = "game-report-tab-id";
 const FAILED_CONNECTION_ERROR = "Could not establish connection. Receiving end does not exist.";
 const RETRY_LIMIT = 5;
 
@@ -8,38 +7,21 @@ async function getCallerTab() {
     return tab;
 }
 
-chrome.runtime.onMessage.addListener(async (request, _, sendResponse) => {
-    if (request.message === "open_new_tab") {
-        const callerTab = await getCallerTab();
-
-        let newTabIndex;
-        if (callerTab) {
-            newTabIndex = callerTab.index + 1;
-        }
-
-        try {
-            const result = await chrome.storage.local.get(['gameReportTabId']);
-            let tabId = result.gameReportTabId;
-
-            if (!tabId) {
-                await createGameReportTab(request.url, request.pgn, request.userColor, newTabIndex);
-            } else {
-                try {
-                    await deleteGameReportTab(tabId);
-                    await createGameReportTab(request.url, request.pgn, request.userColor, newTabIndex);
-                } catch (error) {
-                    console.error("Error", error);
-                    await createGameReportTab(request.url, request.pgn, request.userColor, newTabIndex);
-                }
-            }
-        } catch (error) {
-            console.error("Error retrieving tab id : ", error);
-        }
-        sendResponse({ message: "Message received" });
+async function findGameReportTab() {
+    // Look for existing game report tabs
+    try {
+        const tabs = await chrome.tabs.query({
+            url: "*://wintrchess.com/*",
+            currentWindow: true
+        });
+        return tabs[0];
+    } catch (error) {
+        console.error("Error querying tabs:", error);
+        return null;
     }
-});
+}
 
-const createGameReportTab = async (url, pgn, userColor, index) => {
+async function createGameReportTab(url, pgn, userColor, index) {
     console.log("Creating new tab");
     try {
         let properties = { url: url };
@@ -47,23 +29,9 @@ const createGameReportTab = async (url, pgn, userColor, index) => {
             properties.index = index;
         }
         const tab = await chrome.tabs.create(properties);
-        await chrome.storage.local.set({ gameReportTabId: tab.id });
-
         await sendPGNToGameReport(tab.id, pgn, userColor);
     } catch (error) {
         throw new Error("Failed to create game report tab");
-    }
-}
-
-const deleteGameReportTab = async (tabId) => {
-    try {
-        console.log("Deleting game report tab");
-        const tab = await chrome.tabs.get(tabId);
-        if (tab) {
-            await chrome.tabs.remove(tab.id);
-        }
-    } catch (error) {
-        console.error("Error deleting game report tab : ", error);
     }
 }
 
@@ -80,3 +48,28 @@ const sendPGNToGameReport = async (tabId, pgn, userColor, retries = 0) => {
         setTimeout(() => sendPGNToGameReport(tabId, pgn, userColor, retries + 1), delay);
     }
 }
+
+chrome.runtime.onMessage.addListener(async (request, _, sendResponse) => {
+    if (request.message === "open_new_tab") {
+        console.log("Opening new tab");
+        const callerTab = await getCallerTab();
+        let newTabIndex;
+        if (callerTab) {
+            newTabIndex = callerTab.index + 1;
+        }
+
+        try {
+            const existingTab = await findGameReportTab();
+            if (existingTab) {
+                await chrome.tabs.remove(existingTab.id);
+            }
+            
+            await createGameReportTab(request.url, request.pgn, request.userColor, newTabIndex);
+            sendResponse({ success: true });
+        } catch (error) {
+            console.error("Error managing game report tab:", error);
+            sendResponse({ success: false, error: error.message });
+        }
+        return true;
+    }
+});

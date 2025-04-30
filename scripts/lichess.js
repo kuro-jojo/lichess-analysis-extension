@@ -1,4 +1,4 @@
-showToast("Lichess extension loaded");
+showToast("Lichess-Wintrchess analyzer loaded");
 
 const lichessReportBar = document.querySelector("#main-wrap > main > div.analyse__tools");
 const GAME_REPORT_URL = "https://wintrchess.com/";
@@ -56,12 +56,16 @@ const addBtn = (() => {
     lichessReportBar.insertBefore(btn, lichessReportBar.firstChild);
 })()
 
-const sendMessageToOpenTab = (pgn, userColor) => {
-    chrome.runtime.sendMessage({
-        message: "open_new_tab",
-        url: GAME_REPORT_URL,
-        pgn: pgn,
-        userColor: userColor    
-    })
+const sendMessageToOpenTab = async (pgn, userColor) => {
+    try {
+        await chrome.runtime.sendMessage({
+            message: "open_new_tab",
+            url: GAME_REPORT_URL,
+            pgn: pgn,
+            userColor: userColor    
+        })
+    } catch (error) {
+        console.error("Error sending message to background script:", error);
+    }
 }
 
