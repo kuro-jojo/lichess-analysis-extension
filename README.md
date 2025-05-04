@@ -4,6 +4,7 @@
 
 The Lichess-Wintrchess Analyzer is a browser extension that integrates with Lichess to analyze chess games using the wintrchess site. It adds a button to the Lichess analysis board, allowing users to quickly send the PGN (Portable Game Notation) of their game to the wintrchess site for detailed analysis.
 
+[Extension on chrome webstore](https://chromewebstore.google.com/detail/mpefnplikmkihkmdfphonihcmbdkignm?utm_source=item-share-cb)
 ## Features
 
 - Adds a "Analyze on wintrchess" button to the Lichess analysis board.
