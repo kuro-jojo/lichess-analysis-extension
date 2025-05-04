@@ -1,11 +1,12 @@
-showToast("Lichess-Wintrchess analyzer loaded");
+showToast("Lichess to WintrChess analyzer loaded");
 
 const lichessReportBar = document.querySelector("#main-wrap > main > div.analyse__tools");
 const GAME_REPORT_URL = "https://wintrchess.com/";
-const BUTTON_NAME = "wintrchess-button";
+const BUTTON_ID = "wintrchess-button";
+const BUTTON_TEXT = "Analyze on WintrChess";
 
 const checkUserColor = (pgn) => {
-    const userName = document.getElementById("user_tag")?.innerHTML;
+    const userName = document.getElementById("user_tag")?.textContent;
     const lines = pgn.split('\n');
     for (let line of lines) {
         if (line.includes(userName)) {
@@ -15,15 +16,13 @@ const checkUserColor = (pgn) => {
     return 'White'; // If user not found in PGN
 }
 
-
-
 const addBtn = (() => {
-    let btn = document.getElementById(BUTTON_NAME);
+    let btn = document.getElementById(BUTTON_ID);
     if (!btn) {
         btn = document.createElement("button");
-        btn.id = BUTTON_NAME;
-        btn.innerText = "Analyze on wintrchess";
-        btn.classList.add(BUTTON_NAME);
+        btn.id = BUTTON_ID;
+        btn.textContent = BUTTON_TEXT;
+        btn.classList.add(BUTTON_ID);
     }
 
     btn.onclick = () => {
@@ -44,7 +43,7 @@ const addBtn = (() => {
             return;
         }
 
-        const pgn = pgnClass[0].innerText;
+        const pgn = pgnClass[0].textContent;
 
         if (!pgn) {
             showToast("No PGN found");
@@ -62,10 +61,9 @@ const sendMessageToOpenTab = async (pgn, userColor) => {
             message: "open_new_tab",
             url: GAME_REPORT_URL,
             pgn: pgn,
-            userColor: userColor    
+            userColor: userColor
         })
     } catch (error) {
         console.error("Error sending message to background script:", error);
     }
 }
-

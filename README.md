@@ -40,7 +40,3 @@ The Lichess-Wintrchess Analyzer is a browser extension that integrates with Lich
 
 - `storage`: Used to store the tab ID of the wintrchess site.
 - `tabs`: Used to create and manage tabs for the wintrchess site.
-
-## Issues
-
-- Sometimes, after loading the pgn on wintrchess, the button is not clicked. It is inconsistent.  

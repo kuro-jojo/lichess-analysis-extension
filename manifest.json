@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
-    "name": "Lichess-Wintrchess analyzer",
-    "description": "An extension that uses wintrchess site to analyze lichess games",
+    "name": "Lichess to WintrChess analyzer",
+    "description": "An extension that uses WintrChess site to analyze lichess games",
     "version": "1.0",
     "icons": {
         "16": "images/icon16.png",
@@ -20,8 +20,7 @@
                 "styles/lichess.css"
             ],
             "matches": [
-                "https://lichess.org/*/white",
-                "https://lichess.org/*/black",
+                "https://lichess.org/*",
                 "https://lichess.org/analysis/*"
             ]
         },
@@ -29,6 +28,9 @@
             "js": [
                 "scripts/toast.js",
                 "scripts/gameReport.js"
+            ],
+            "css": [
+                "styles/toast.css"
             ],
             "matches": [
                 "https://wintrchess.com/*"
