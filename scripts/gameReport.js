@@ -27,27 +27,87 @@ const findElement = (selector, filterFn) => {
 
 // Element Finders
 const findPGNField = () => {
-    return findElement(SELECTOR_PGN_TEXTAREA, el => 
+    // First try to find textarea by PGN placeholder
+    const textarea = findElement(SELECTOR_PGN_TEXTAREA, el =>
         el.placeholder && el.placeholder.toLowerCase().includes('pgn')
     );
+
+    if (textarea) return textarea;
+
+    // If not found, try to find textarea that is a sibling of the dropdown label's parent
+    const label = findPGNDropdownLabel();
+    if (label) {
+        const parent = label.parentElement;
+        if (parent) {
+            const nextElement = parent.nextElementSibling;
+            if (nextElement && nextElement.tagName === 'TEXTAREA') {
+                return nextElement;
+            }
+        }
+    }
+
+    return null;
 };
 
-const findPGNDropdown = () => {
-    return findElement(SELECTOR_PGN_DROPDOWN, div => 
-        div.textContent.trim() === 'Load game from'
-    );
+const findPGNDropdownLabel = () => {
+    const divs = document.querySelectorAll(SELECTOR_PGN_DROPDOWN);
+    for (const div of divs) {
+        if (div.textContent.trim() === 'Load game from') {
+            const nextElement = div.nextElementSibling;
+            if (nextElement && nextElement.tagName === 'SELECT') {
+                return div;
+            }
+        }
+    }
+    return null;
 };
 
 const findReviewButton = () => {
-    return findElement(SELECTOR_REVIEW_BUTTON, button => 
+    // First try to find button by text content
+    const button = findElement(SELECTOR_REVIEW_BUTTON, button =>
         button.textContent.trim() === 'Analyse'
     );
+
+    if (button) return button;
+
+    // If not found, try to find the 4th element in a div with 6 children where 1st contains "Game Report"
+    const buttons = document.querySelectorAll(SELECTOR_REVIEW_BUTTON);
+    for (const button of buttons) {
+        const parentDiv = button.closest('div');
+        if (parentDiv && parentDiv.children.length === 6) {
+            const firstChild = parentDiv.children[0];
+            if (firstChild.textContent.toLowerCase().includes('game report')) {
+                const elements = Array.from(parentDiv.children);
+                return elements[3];
+            }
+        }
+    }
+
+    return null;
 };
 
 const findFlipButton = () => {
-    return findElement(SELECTOR_FLIP_BUTTON, button => 
-        button.title.trim() === 'Flip Board'
+    // First try to find button by title or data-tooltip-id
+    const button = findElement(SELECTOR_FLIP_BUTTON, button =>
+        button.title.toLowerCase().includes('flip') ||
+        (button.dataset?.tooltipId?.toLowerCase()?.includes('flip') ?? false)
     );
+
+    if (button) return button;
+
+    // If not found, try to find the first button in a div with exactly 3 buttons
+    const buttons = document.querySelectorAll(SELECTOR_FLIP_BUTTON);
+    for (const button of buttons) {
+        const parentDiv = button.closest('div');
+        if (parentDiv && parentDiv.children.length === 3) {
+            const buttonsInDiv = Array.from(parentDiv.children).filter(child => child.tagName === 'BUTTON');
+            if (buttonsInDiv.length === 3) {
+                return buttonsInDiv[0];
+            }
+        }
+    }
+
+    return null;
 };
 
 /**
@@ -56,16 +116,15 @@ const findFlipButton = () => {
  */
 const selectPGNOption = () => {
     try {
-        const label = findPGNDropdown();
+        const label = findPGNDropdownLabel();
         if (!label) {
             console.error(ERROR_MESSAGES.DROPDOWN_NOT_FOUND);
             return false;
         }
 
-        const select = label.nextElementSibling?.tagName === 'SELECT' ? 
-            label.nextElementSibling : null;
-
-        if (!select) {
+        // Get the select element directly from the label since we know it exists
+        const select = label.nextElementSibling;
+        if (!select || select.tagName !== 'SELECT') {
             console.error('No SELECT element found next to dropdown label');
             return false;
         }
