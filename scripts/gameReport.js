@@ -1,10 +1,15 @@
 // Constants
 const PGN_VALUE = "PGN";
-const TIMEOUT_OBSERVER = 5000;
 const SELECTOR_PGN_TEXTAREA = 'textarea';
 const SELECTOR_PGN_DROPDOWN = 'div';
 const SELECTOR_REVIEW_BUTTON = 'button';
 const SELECTOR_FLIP_BUTTON = 'button';
+const LOCAL_STORAGE_KEY = 'wintrchess_preferred_language';
+const ENGLISH_LANGUAGE = 'en';
+const GAME_NOT_FOUND_MESSAGE = 'Please select a Chess game.';
+const EVALUATING_MESSAGE = 'Evaluating';
+const TIMEOUT_OBSERVER = 10000;
+const LOADING_TIMEOUT = 10000;
 
 // Error Messages
 const ERROR_MESSAGES = {
@@ -12,24 +17,54 @@ const ERROR_MESSAGES = {
     DROPDOWN_NOT_FOUND: 'Could not find PGN dropdown',
     REVIEW_BUTTON_NOT_FOUND: 'Could not find review button',
     FLIP_BUTTON_NOT_FOUND: 'Could not find flip board button',
-    UNEXPECTED_ERROR: 'An unexpected error occurred'
+    UNEXPECTED_ERROR: 'An unexpected error occurred',
+    LANGUAGE_ERROR: 'This extension only works with the English version for now.',
+    LOADING_TIMEOUT: 'Page loading timeout exceeded'
 };
 
 // DOM Selection Helper
-const findElement = (selector, filterFn) => {
+const findElement = (selector, filterFn, noError = false) => {
     const elements = document.querySelectorAll(selector);
     const element = Array.from(elements).find(filterFn);
-    if (!element) {
+    if (!element && !noError) {
         console.error(`Element not found for selector: ${selector}`);
     }
     return element;
 };
 
+// Loading State Observer
+const waitForLoadingToComplete = () => {
+    return new Promise((resolve) => {
+        const observer = new MutationObserver(() => {
+            const loadingElements = document.querySelectorAll('span');
+            const loadingSpan = Array.from(loadingElements).find(span =>
+                span.textContent.trim().toLowerCase().includes('loading')
+            );
+
+            if (!loadingSpan) {
+                observer.disconnect();
+                resolve(true);
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Timeout if loading takes too long
+        setTimeout(() => {
+            observer.disconnect();
+            resolve(false);
+        }, LOADING_TIMEOUT);
+    });
+};
+
 // Element Finders
-const findPGNField = () => {
+const findPGNField = (noError = false) => {
     // First try to find textarea by PGN placeholder
     const textarea = findElement(SELECTOR_PGN_TEXTAREA, el =>
-        el.placeholder && el.placeholder.toLowerCase().includes('pgn')
+        el.placeholder && el.placeholder.toLowerCase().includes('pgn'), noError
     );
 
     if (textarea) return textarea;
@@ -121,7 +156,6 @@ const selectPGNOption = () => {
             console.error(ERROR_MESSAGES.DROPDOWN_NOT_FOUND);
             return false;
         }
-
         // Get the select element directly from the label since we know it exists
         const select = label.nextElementSibling;
         if (!select || select.tagName !== 'SELECT') {
@@ -152,7 +186,7 @@ const updatePGNField = (pgn) => {
     const pgnField = findPGNField();
     if (!pgnField) {
         console.error(ERROR_MESSAGES.PGN_NOT_FOUND);
-        showToast(ERROR_MESSAGES.PGN_NOT_FOUND);
+        showToast(ERROR_MESSAGES.PGN_NOT_FOUND, true);
         return false;
     }
 
@@ -188,7 +222,7 @@ const updatePGNField = (pgn) => {
     return true;
 };
 
-const handleGameReview = (request) => {
+const handleGameReview = async (request) => {
     // Select PGN option
     if (!selectPGNOption()) {
         return { success: false, error: ERROR_MESSAGES.DROPDOWN_NOT_FOUND };
@@ -213,6 +247,46 @@ const handleGameReview = (request) => {
         return { success: false, error: ERROR_MESSAGES.REVIEW_BUTTON_NOT_FOUND };
     }
 
+    // Monitor for analysis start
+    const waitForAnalysisStart = async () => {
+        return new Promise((resolve, reject) => {
+            const observer = new MutationObserver(() => {
+                // Check if error message appears
+                const errorMessage = document.querySelectorAll('span');
+                const errorSpan = Array.from(errorMessage).find(span => span.textContent.includes(GAME_NOT_FOUND_MESSAGE));
+                if (errorSpan) {
+                    observer.disconnect();
+                    console.info('WintrChess didn\'t find the game to analyze. Retrying...');
+                    handleGameReview(request);
+                    return;
+                }
+
+                // Check if PGN textarea is removed
+                const pgnField = findPGNField(noError = true);
+                if (!pgnField) {
+                    // Check if evaluation started
+                    const evaluatingSpan = Array.from(document.querySelectorAll('span')).find(span => span.textContent.includes(EVALUATING_MESSAGE));
+                    if (evaluatingSpan && evaluatingSpan.textContent.includes(EVALUATING_MESSAGE)) {
+                        observer.disconnect();
+                        resolve(true);
+                        return;
+                    }
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+
+            // Timeout if analysis doesn't start
+            setTimeout(() => {
+                observer.disconnect();
+                reject(new Error('Analysis timeout'));
+            }, TIMEOUT_OBSERVER);
+        });
+    };
+
     // Add click handler to ensure PGN is still set
     const cleanup = addEventListenerWithCleanup(reviewBtn, 'click', () => {
         const pgnField = findPGNField();
@@ -227,8 +301,16 @@ const handleGameReview = (request) => {
     const cleanupTimeout = setTimeout(cleanup, TIMEOUT_OBSERVER);
     reviewBtn.addEventListener('click', () => clearTimeout(cleanupTimeout), { once: true });
 
+    // Click the button and wait for analysis to start
     reviewBtn.click();
-    return { success: true };
+
+    try {
+        await waitForAnalysisStart();
+        return { success: true };
+    } catch (error) {
+        console.error('Analysis failed:', error);
+        return { success: false, error: error.message };
+    }
 };
 
 /**
@@ -250,22 +332,60 @@ const addEventListenerWithCleanup = (element, event, handler, options = {}) => {
  * @param {Object} _ - The sender object (unused)
  * @param {Function} sendResponse - The response callback
  */
-chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, _, sendResponse) => {
     if (request.message === "update_pgn") {
         try {
-            const result = handleGameReview(request);
+            // First try to find elements without waiting
+            const preferredLanguage = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (preferredLanguage && preferredLanguage !== ENGLISH_LANGUAGE) {
+                sendResponse({ message: "error", error: ERROR_MESSAGES.LANGUAGE_ERROR });
+                showToast(ERROR_MESSAGES.LANGUAGE_ERROR, true);
+                return;
+            }
+            const result = await handleGameReview(request);
             if (result.success) {
+                showToast("PGN updated! Please wait for the analysis to complete.");
                 sendResponse({ message: "PGN updated" });
-                showToast("PGN updated successfully!");
+                return;
+            }
+            // If initial attempt failed, check if page is still loading
+            const loadingSpan = Array.from(document.querySelectorAll('span'))
+                .find(span => span.textContent.trim().toLowerCase().includes('loading'));
+
+            console.log("Waiting for loading to complete", loadingSpan);
+            if (loadingSpan) {
+                // Wait for loading to complete
+                waitForLoadingToComplete().then(async isReady => {
+                    console.log("Loading complete", isReady);
+                    if (!isReady) {
+                        sendResponse({
+                            message: "error",
+                            error: ERROR_MESSAGES.LOADING_TIMEOUT
+                        });
+                        showToast(ERROR_MESSAGES.LOADING_TIMEOUT, true);
+                        return;
+                    }
+
+                    // Try again after loading completes
+                    const result = await handleGameReview(request);
+                    if (result.success) {
+                        sendResponse({ message: "PGN updated" });
+                        showToast("PGN updated! Please wait for the analysis to complete.");
+                    } else {
+                        sendResponse({ message: "error", error: result.error });
+                        showToast(result.error, true);
+                    }
+                });
             } else {
+                // If not loading but still failed, return the error
                 sendResponse({ message: "error", error: result.error });
-                showToast(result.error);
+                showToast(result.error, true);
             }
         } catch (error) {
             console.error(`Error processing PGN update: ${error.message}`);
             const errorMessage = error.message || ERROR_MESSAGES.UNEXPECTED_ERROR;
             sendResponse({ message: "error", error: errorMessage });
-            showToast(errorMessage);
+            showToast(errorMessage, true);
         }
     }
     return true;

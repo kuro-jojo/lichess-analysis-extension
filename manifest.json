@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Lichess to WintrChess analyzer",
     "description": "Quickly analyze Lichess games with WintrChess's powerful chess analysis tools.",
-    "version": "1.1.0",
+    "version": "1.1.2",
     "icons": {
         "16": "images/icon16.png",
         "32": "images/icon32.png",
@@ -20,8 +20,7 @@
                 "styles/lichess.css"
             ],
             "matches": [
-                "https://lichess.org/*",
-                "https://lichess.org/analysis/*"
+                "https://lichess.org/*"
             ]
         },
         {

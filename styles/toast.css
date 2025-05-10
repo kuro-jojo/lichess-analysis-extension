@@ -2,10 +2,10 @@
     visibility: hidden;
     max-width: 50%;
     margin: 0 auto;
-    background-color: rgb(85, 85, 85);
-    color: rgb(39, 166, 170);
+    background-color: rgb(42, 50, 66);
+    color: rgb(255, 255, 255);
     text-align: center;
-    font-weight: 600;
+    font-weight: 400;
     border-radius: 2px;
     padding: 16px;
     position: fixed;
@@ -18,8 +18,12 @@
 
 .toast.show {
     visibility: visible;
-    -webkit-animation: fadein 0.5s, fadeout 0.5s 1.5s;
-    animation: fadein 0.5s, fadeout 0.5s 1.5s;
+    -webkit-animation: fadein 0.5s, fadeout 0.5s 12.5s;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+.toast.error {
+    background-color: rgb(255, 85, 85);
 }
 
 @-webkit-keyframes fadein {

@@ -11,8 +11,7 @@
 }
 
 .wintrchess-button:hover {
-    background-color: rgb(39, 166, 170);
-    color: rgb(49, 47, 47);
-    transition: all 0.2s ease;
-
+    background-color: rgb(34, 42, 56);
+    /* color: rgb(49, 47, 47); */
+    transition: all 0.3s ease;
 }
